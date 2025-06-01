@@ -1,0 +1,36 @@
+name: Release State Pattern Demo
+
+on:
+  push:
+    tags:
+      - "*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install dependencies
+        run: sudo apt update && sudo apt install -y cmake rpm dpkg-dev
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=\${{ github.workspace }}/install
+      - name: Build
+        run: cmake --build build --config Release
+      - name: Run Tests
+        run: ctest --test-dir build --output-on-failure
+      - name: Install
+        run: cmake --install build
+      - name: Package
+        run: cd build && cpack -G DEB && cpack -G RPM && cpack -G ZIP
+      - name: Upload
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            build/*.deb
+            build/*.rpm
+            build/*.zip
+        env:
+          GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}
